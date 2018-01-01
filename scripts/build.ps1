@@ -109,6 +109,10 @@ function Launch-Make([string] $makeCmd, [string] $makeFlags, [string] $sdkPath, 
     $global:LASTEXITCODE = $process.ExitCode
 }
 
+# Let's see how long this takes...
+$stopwatch = New-Object System.Diagnostics.Stopwatch
+$stopwatch.Start()
+
 # alias params for clarity in the script (we don't want the person invoking this script to have to type the name -modNameCanonical)
 $modNameCanonical = $mod
 # we're going to ask that people specify the folder that has their .XCOM_sln in it as the -srcDirectory argument, but a lot of the time all we care about is
@@ -210,5 +214,9 @@ Copy-Item $stagingPath $productionPath -Force -Recurse -WarningAction SilentlyCo
 Write-Host "Copied."
 
 # we made it!
+
+$stopwatch.stop()
+$ts = $stopwatch.Elapsed.TotalSeconds;
+
 Write-Host "*** SUCCESS! ***"
-Write-Host "$modNameCanonical ready to run."
+Write-Host "$modNameCanonical ready to run in $ts seconds."
