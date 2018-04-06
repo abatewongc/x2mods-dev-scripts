@@ -24,6 +24,10 @@ function StageDirectory ([string]$directoryName, [string]$srcDirectory, [string]
 
 function CheckErrorCode([string] $message) {
     if ($LASTEXITCODE -ne 0) {
+        $stopwatch.stop()
+        $ts = $stopwatch.Elapsed.TotalSeconds;
+
+        Write-Host "Build failed in $ts seconds."
         throw $message;
     }
 }
@@ -110,16 +114,21 @@ function Launch-Make([string] $makeCmd, [string] $makeFlags, [string] $sdkPath, 
 }
 
 function HaveDirectoryContentsChanged ([string] $srcDirPath, [string] $destDirPath) {
+    $srcDir = Get-ChildItem $srcDirPath
+    $destDir = Get-ChildItem $destDirPath
+
+    # quick check, obviously if there's more files in one location, there's been a change
+    # also the code below doesn't check to see if a file has been removed
+    if($srcDir.Length -ne $destDir.Length) {
+        return $true
+    }
+
     # cp'd directly from stackoverflow
     $DiffFound = Get-ChildItem $srcDirPath | Where-Object {
         ($_ | Get-FileHash).Hash -ne (Get-FileHash (Join-Path $destDirPath $_.Name)).Hash
     } 
 
-    if (-not $DiffFound) {
-        return $false
-    } else {
-        return $true
-    }
+    return $DiffFound
 }
 
 # Let's see how long this takes...
@@ -163,6 +172,7 @@ if(Test-Path $tempCachePath) {
     Write-Host "Unable to find a ModShaderCache. Shader precompliation is required."
 }
 
+# check to see if the files changed
 if($canSkipShaderPrecompliation) {
     $canSkipShaderPrecompliation = -not (HaveDirectoryContentsChanged $modSrcRoot/Content $stagingPath/Content)
 }
@@ -171,6 +181,10 @@ if($canSkipShaderPrecompliation) {
     Write-Host "Can skip shader precompliation."
 } else {
     Write-Host "Can't skip shader precompliation."
+    if(Test-Path $tempCachePath) {
+        Remove-Item -Path $tempCachePath
+        Remove-Item -path $modSrcRoot/tmp
+    }
 }
 
 # clean
